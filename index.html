@@ -21,6 +21,8 @@
         .print-shadow-none { box-shadow: none !important; }
         .print-text-black { color: black !important; }
         .page-break-avoid { page-break-inside: avoid; }
+        /* 강제 페이지 넘김 클래스 추가 */
+        .print-break-before-page { break-before: page; page-break-before: always; }
       }
       /* Custom scrollbar for webkit */
       ::-webkit-scrollbar {
@@ -38,7 +40,7 @@
         background: #94a3b8; 
       }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.1",

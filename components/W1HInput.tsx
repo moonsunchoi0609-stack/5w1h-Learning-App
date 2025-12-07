@@ -56,7 +56,7 @@ const W1HInput: React.FC<W1HInputProps> = ({
       </div>
       <div className="relative flex-grow flex flex-col">
         <textarea
-          className={`w-full p-5 bg-white rounded-b-xl focus:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-opacity-20 focus:ring-indigo-500 resize-none text-slate-800 text-lg leading-relaxed flex-grow min-h-[140px] placeholder:text-slate-300 transition-colors ${isAiLoading ? 'animate-pulse bg-slate-100' : ''}`}
+          className={`w-full p-5 bg-white rounded-b-xl focus:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-opacity-20 focus:ring-indigo-500 resize-none text-slate-800 text-lg leading-relaxed flex-grow min-h-[200px] placeholder:text-slate-300 transition-colors ${isAiLoading ? 'animate-pulse bg-slate-100' : ''}`}
           placeholder={placeholder}
           value={value}
           onChange={onChange}

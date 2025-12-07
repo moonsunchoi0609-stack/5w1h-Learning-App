@@ -213,7 +213,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
         </div>
 
         {/* 5W1H Section */}
-        <div className="print-break-before-auto">
+        <div className="print-break-before-page">
           <div className="flex items-center justify-between mb-8 print-mb-4">
             <div className="flex items-center gap-3">
               <div className="bg-slate-900 text-white p-2.5 rounded-xl print-hidden shadow-lg transform -rotate-3">
