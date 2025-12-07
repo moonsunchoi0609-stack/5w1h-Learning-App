@@ -152,7 +152,7 @@ const Workspace: React.FC<WorkspaceProps> = ({
         </div>
         <p className="text-2xl font-bold text-slate-700 mb-3">학습할 주제를 선택하세요</p>
         <p className="text-base text-slate-400 max-w-sm text-center leading-relaxed">
-          왼쪽에서 추천 기사를 선택하거나<br/>
+          왼쪽에서 추천 글감을 선택하거나<br/>
           궁금한 키워드를 검색하여 탐구를 시작해보세요.
         </p>
       </div>
