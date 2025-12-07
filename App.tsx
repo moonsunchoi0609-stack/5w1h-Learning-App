@@ -117,7 +117,7 @@ const App = () => {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">AI 탐구생활</h1>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider hidden sm:block">AI 육하원칙 학습 앱</p>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider hidden sm:block">AI 육하원칙 학습 도구</p>
             </div>
           </div>
           
