@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Globe, Sparkles, RefreshCw } from 'lucide-react';
-import { Article, SUGGESTED_KEYWORDS } from '../types';
+import { Search, Loader2, Sparkles, RefreshCw, PenTool, Trash2 } from 'lucide-react';
+import { Article, SUGGESTED_KEYWORDS, Difficulty } from '../types';
 import ArticleCard from './ArticleCard';
 import { getRecommendedKeywords } from '../services/geminiService';
 
@@ -13,6 +13,9 @@ interface SidebarProps {
   selectedArticleId?: string;
   onSelectArticle: (article: Article) => void;
   showSavedList: boolean;
+  onClearList: () => void;
+  difficulty: Difficulty;
+  setDifficulty: (d: Difficulty) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -23,7 +26,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   articleList,
   selectedArticleId,
   onSelectArticle,
-  showSavedList
+  showSavedList,
+  onClearList,
+  difficulty,
+  setDifficulty
 }) => {
   const [keywords, setKeywords] = useState<string[]>(SUGGESTED_KEYWORDS);
   const [isKeywordLoading, setIsKeywordLoading] = useState(false);
@@ -37,7 +43,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       }
     } catch (error) {
       console.error("Failed to refresh keywords", error);
-      // Fallback is already set to SUGGESTED_KEYWORDS via initial state
     } finally {
       setIsKeywordLoading(false);
     }
@@ -59,14 +64,38 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Search Card */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
         <h2 className="text-sm font-bold text-slate-500 mb-4 flex items-center gap-2">
-          <Globe size={16} /> 주제 탐색
+          <PenTool size={16} /> AI 글짓기
         </h2>
+        
+        <div className="mb-3">
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button 
+              onClick={() => setDifficulty('easy')}
+              className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${difficulty === 'easy' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              쉬움
+            </button>
+            <button 
+              onClick={() => setDifficulty('medium')}
+              className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${difficulty === 'medium' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              보통
+            </button>
+            <button 
+              onClick={() => setDifficulty('hard')}
+              className={`flex-1 text-xs font-bold py-1.5 rounded-md transition-all ${difficulty === 'hard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              어려움
+            </button>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="relative mb-6">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="주제 입력 (예: 이순신)"
+            placeholder="글감 입력 (예: 이순신, 우주)"
             className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all text-sm font-medium"
           />
           <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
@@ -75,14 +104,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             disabled={isSearching || !query.trim()}
             className="absolute right-2 top-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-sm"
           >
-            {isSearching ? <Loader2 size={14} className="animate-spin"/> : '검색'}
+            {isSearching ? <Loader2 size={14} className="animate-spin"/> : '생성'}
           </button>
         </form>
 
         <div>
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-              <Sparkles size={12} className="text-amber-400"/> AI 추천 키워드
+              <Sparkles size={12} className="text-amber-400"/> 추천 글감
             </p>
             <button 
               onClick={refreshKeywords} 
@@ -118,20 +147,31 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-400px)] min-h-[400px]">
         <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
           <span className="font-bold text-slate-700 text-sm">
-            {isSearching ? '백과사전 검색 중...' : '검색 결과'}
+            {isSearching ? '글을 짓는 중...' : '생성된 글 목록'}
           </span>
-          <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
-            {articleList.length}
-          </span>
+          <div className="flex items-center gap-2">
+             <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-bold">
+              {articleList.length}
+            </span>
+            {articleList.length > 0 && (
+              <button 
+                onClick={onClearList}
+                className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                title="목록 비우기"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         </div>
         
         {isSearching ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 space-y-3">
             <div className="relative">
               <div className="absolute inset-0 bg-indigo-400 rounded-full opacity-20 animate-ping"></div>
-              <Loader2 size={32} className="animate-spin text-indigo-500 relative z-10"/>
+              <PenTool size={32} className="text-indigo-500 relative z-10 animate-bounce"/>
             </div>
-            <p className="text-sm font-medium">지식을 찾아오는 중입니다...</p>
+            <p className="text-sm font-medium">AI가 글을 작성하고 있습니다...</p>
           </div>
         ) : (
           <div className="overflow-y-auto p-2 space-y-2 flex-1 scroll-smooth">
@@ -146,9 +186,9 @@ const Sidebar: React.FC<SidebarProps> = ({
               ))
             ) : (
               <div className="p-8 text-center text-slate-400 flex flex-col items-center">
-                <Search size={48} className="mb-3 opacity-20" />
-                <p className="text-sm">검색 결과가 없습니다.</p>
-                <p className="text-xs mt-2 opacity-60">키워드를 변경하여 다시 검색해보세요.</p>
+                <PenTool size={48} className="mb-3 opacity-20" />
+                <p className="text-sm">생성된 글이 없습니다.</p>
+                <p className="text-xs mt-2 opacity-60">키워드를 입력하여 글을 만들어보세요.</p>
               </div>
             )}
           </div>

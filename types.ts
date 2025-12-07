@@ -33,6 +33,8 @@ export enum W1HField {
   WHY = 'why'
 }
 
+export type Difficulty = 'easy' | 'medium' | 'hard';
+
 export const RECOMMENDED_ARTICLES: Article[] = [
   {
     id: 'rec_1',

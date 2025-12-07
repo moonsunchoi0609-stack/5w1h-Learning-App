@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { W1HAnswers } from "../types";
+import { W1HAnswers, Article, Difficulty } from "../types";
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -49,21 +49,14 @@ export const analyzeArticleWithAI = async (articleText: string): Promise<W1HAnsw
 };
 
 export const refineTextForW1H = async (text: string): Promise<string> => {
+  // 더 이상 UI에서 호출되지 않지만, 하위 호환성을 위해 유지하거나 다른 용도로 남겨둡니다.
   try {
     const response = await ai.models.generateContent({
         model: modelName,
         contents: `
           다음 텍스트를 읽고 학생들이 '육하원칙(5W1H)'을 스스로 찾아 빈칸을 채울 수 있도록 학습 자료용 지문으로 다듬어주세요.
-
-          [작성 가이드]
-          대상 독자 및 난이도: 초등학교 고학년 수준의 쉬운 어휘와 명확한 문장 구조를 사용하세요. (생활연령이 높은 학생도 읽기 편한 세련되지만 쉬운 문체)
-          구성 방식 (핵심):
-          '언제: O월 O일', '장소: OO' 처럼 정보를 요약하거나 나열하지 마세요.
-          사건이 일어난 순서나 인과 관계에 따라 자연스러운 줄글(이야기) 형태로 서술하세요.
-          학생이 글을 꼼꼼히 읽어야만 육하원칙 요소를 발견할 수 있도록 문맥 속에 정보를 자연스럽게 녹여내세요.
-          내용 보강: 원문의 정보가 너무 빈약하여 추론이 어렵다면, 사실관계를 해치지 않는 선에서 상황을 이해할 수 있는 배경 설명이나 묘사를 1~2문장 추가하세요.
-          어조: 친절하고 차분한 설명조('~합니다/했습니다')를 유지하세요.
-
+          대상 독자: 초등학교 고학년
+          형식: 줄글(이야기) 형태, 요약 금지, 설명조(~합니다).
           원문:
           ${text.substring(0, 4000)}
         `,
@@ -72,6 +65,79 @@ export const refineTextForW1H = async (text: string): Promise<string> => {
   } catch (error) {
       console.error("Refinement failed:", error);
       return text;
+  }
+};
+
+export const generateEducationalArticle = async (topic: string, difficulty: Difficulty = 'medium'): Promise<Article> => {
+  let targetAudience = "초등학교 고학년";
+  let writingStyle = "명확한 문장 구조와 표준적인 어휘";
+  
+  if (difficulty === 'easy') {
+    targetAudience = "초등학교 저학년(1~3학년)";
+    writingStyle = "아주 쉬운 어휘, 짧은 문장, 친근한 동화체";
+  } else if (difficulty === 'hard') {
+    targetAudience = "중학생";
+    writingStyle = "논리적인 전개, 구체적인 설명, 다소 심화된 어휘 사용";
+  }
+
+  try {
+    const prompt = `
+      '${topic}'에 대해 ${targetAudience} 학생들이 읽고 육하원칙(누가, 언제, 어디서, 무엇을, 어떻게, 왜)을 분석하기 좋은 교육용 지문을 작성해주세요.
+
+      [작성 가이드]
+      1. 대상 독자 및 난이도: ${targetAudience} 수준. (${writingStyle})
+      2. 구성 방식 (핵심):
+         - **절대로** '언제: O월 O일', '장소: OO' 처럼 정보를 요약하거나 나열하지 마세요.
+         - 사건이 일어난 순서나 인과 관계에 따라 자연스러운 줄글(이야기) 형태로 서술하세요.
+         - 학생이 글을 꼼꼼히 읽어야만 육하원칙 요소를 발견할 수 있도록 문맥 속에 정보를 자연스럽게 녹여내세요.
+      3. 내용 보강: 원문의 정보가 빈약하다면 사실관계를 해치지 않는 선에서 상황을 이해할 수 있는 배경 설명이나 묘사를 1~2문장 추가하세요.
+      4. 어조: 친절하고 차분한 설명조('~합니다/했습니다')를 유지하세요.
+      5. 형식:
+         - 제목: 주제를 잘 나타내는 매력적인 제목
+         - 카테고리: 주제에 맞는 적절한 분야 (예: 역사, 과학, 사회, 인물 등)
+         - 분량: 500~800자 내외
+
+      응답은 반드시 다음 JSON 형식을 준수하세요:
+      {
+        "title": "제목",
+        "category": "카테고리",
+        "content": "본문 내용..."
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            category: { type: Type.STRING },
+            content: { type: Type.STRING },
+          },
+          required: ["title", "category", "content"],
+        },
+      },
+    });
+
+    if (response.text) {
+      const data = JSON.parse(response.text);
+      return {
+        id: `gen_${Date.now()}`,
+        title: data.title,
+        category: data.category,
+        content: data.content,
+        source: 'AI 생성 활동지',
+        readTime: difficulty === 'easy' ? '쉬움' : difficulty === 'hard' ? '어려움' : '보통',
+        keywords: [topic, 'AI작문']
+      };
+    }
+    throw new Error("No text generated");
+  } catch (error) {
+    console.error("Article generation failed:", error);
+    throw error;
   }
 };
 

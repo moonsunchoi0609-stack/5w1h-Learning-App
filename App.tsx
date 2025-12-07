@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Save, Trash2, Clock, ChevronRight, Menu, X } from 'lucide-react';
-import { Article, SavedDocument, W1HAnswers, RECOMMENDED_ARTICLES } from './types';
-import { fetchWikipediaArticles } from './services/wikiService';
+import { Article, SavedDocument, W1HAnswers, RECOMMENDED_ARTICLES, Difficulty } from './types';
+import { generateEducationalArticle } from './services/geminiService';
 import Sidebar from './components/Sidebar';
 import Workspace from './components/Workspace';
 
@@ -11,13 +11,14 @@ const INITIAL_ANSWERS: W1HAnswers = {
 
 const App = () => {
   const [query, setQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [articleList, setArticleList] = useState<Article[]>(RECOMMENDED_ARTICLES);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [answers, setAnswers] = useState<W1HAnswers>(INITIAL_ANSWERS);
   const [savedDocs, setSavedDocs] = useState<SavedDocument[]>([]);
   const [showSavedList, setShowSavedList] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
 
   useEffect(() => {
     const storedDocs = localStorage.getItem('inquiryLifeDocs_v3');
@@ -26,27 +27,25 @@ const App = () => {
     }
   }, []);
 
-  const handleSearch = async (manualQuery?: string) => {
-    const searchQuery = manualQuery || query;
-    if (!searchQuery.trim()) return;
+  const handleGenerate = async (manualQuery?: string) => {
+    const topic = manualQuery || query;
+    if (!topic.trim()) return;
 
     if (manualQuery) setQuery(manualQuery);
-    setIsSearching(true);
-    setMobileMenuOpen(false); // Close mobile menu if open to show results
+    setIsGenerating(true);
+    setMobileMenuOpen(false);
     
     try {
-      const results = await fetchWikipediaArticles(searchQuery);
-      setArticleList(results.length > 0 ? results : []);
+      // 위키 검색 대신 AI 글 생성 호출, 난이도 전달
+      const newArticle = await generateEducationalArticle(topic, difficulty);
+      // 기존 목록의 맨 앞에 추가
+      setArticleList(prev => [newArticle, ...prev]);
+      // 생성된 글 바로 선택
+      handleSelectArticle(newArticle);
     } catch (error) {
-      alert("검색 중 오류가 발생했습니다.");
+      alert("글 생성 중 오류가 발생했습니다.");
     } finally {
-      setIsSearching(false);
-    }
-
-    // Reset workspace if user searches
-    if(!selectedArticle) {
-        setSelectedArticle(null);
-        setAnswers(INITIAL_ANSWERS);
+      setIsGenerating(false);
     }
   };
 
@@ -57,6 +56,16 @@ const App = () => {
     setMobileMenuOpen(false); 
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleClearList = () => {
+    if (articleList.length === 0) return;
+    if (window.confirm("생성된 글 목록을 모두 삭제하시겠습니까?")) {
+      setArticleList([]);
+      if (selectedArticle && articleList.some(a => a.id === selectedArticle.id)) {
+        setSelectedArticle(null);
+      }
+    }
   };
 
   const handleSave = () => {
@@ -107,8 +116,8 @@ const App = () => {
               <BookOpen size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight">Inquiry Life AI</h1>
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider hidden sm:block">AI & Wiki Search Platform</p>
+              <h1 className="text-xl font-bold tracking-tight">AI 탐구생활</h1>
+              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider hidden sm:block">AI 육하원칙 학습 앱</p>
             </div>
           </div>
           
@@ -150,12 +159,15 @@ const App = () => {
            <Sidebar 
             query={query} 
             setQuery={setQuery} 
-            isSearching={isSearching} 
-            onSearch={handleSearch} 
+            isSearching={isGenerating} 
+            onSearch={handleGenerate} 
             articleList={articleList}
             selectedArticleId={selectedArticle?.id}
             onSelectArticle={handleSelectArticle}
             showSavedList={showSavedList}
+            onClearList={handleClearList}
+            difficulty={difficulty}
+            setDifficulty={setDifficulty}
            />
         </div>
         

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { 
   Printer, Save, PenTool, CheckCircle, FileText, 
   User, Calendar, MapPin, Activity, Lightbulb, HelpCircle, 
-  Newspaper, Wand2, ArrowRight
+  Newspaper, ArrowRight
 } from 'lucide-react';
 import { Article, W1HAnswers } from '../types';
 import W1HInput from './W1HInput';
-import { analyzeArticleWithAI, refineTextForW1H } from '../services/geminiService';
+import { analyzeArticleWithAI } from '../services/geminiService';
 
 interface WorkspaceProps {
   article: Article | null;
@@ -24,16 +24,6 @@ const Workspace: React.FC<WorkspaceProps> = ({
   onPrint 
 }) => {
   const [isAiWorking, setIsAiWorking] = useState(false);
-  const [displayContent, setDisplayContent] = useState<string>('');
-  const [isRefined, setIsRefined] = useState(false);
-
-  // Update local display content when article changes
-  React.useEffect(() => {
-    if (article) {
-      setDisplayContent(article.content);
-      setIsRefined(false);
-    }
-  }, [article]);
 
   const handleInputChange = (field: keyof W1HAnswers, value: string) => {
     setAnswers(prev => ({ ...prev, [field]: value }));
@@ -43,35 +33,12 @@ const Workspace: React.FC<WorkspaceProps> = ({
     if (!article) return;
     setIsAiWorking(true);
     try {
-      // Use the displayed content (which might be refined) for better analysis results
-      const result = await analyzeArticleWithAI(displayContent);
+      const result = await analyzeArticleWithAI(article.content);
       setAnswers(result);
     } catch (error) {
       alert("AI 분석에 실패했습니다. 잠시 후 다시 시도해주세요.");
     } finally {
       setIsAiWorking(false);
-    }
-  };
-
-  const handleAiRefine = async () => {
-    if (!article || isRefined) return;
-    setIsAiWorking(true);
-    try {
-      const refinedText = await refineTextForW1H(article.content);
-      setDisplayContent(refinedText);
-      setIsRefined(true);
-    } catch (error) {
-      console.error(error);
-      alert("글 다듬기에 실패했습니다.");
-    } finally {
-      setIsAiWorking(false);
-    }
-  };
-
-  const handleRestoreOriginal = () => {
-    if (article) {
-      setDisplayContent(article.content);
-      setIsRefined(false);
     }
   };
 
@@ -102,24 +69,12 @@ const Workspace: React.FC<WorkspaceProps> = ({
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
           {/* AI Tools */}
           <div className="flex items-center gap-2 mr-2 pr-4 border-r border-slate-200">
-             <button 
-              onClick={isRefined ? handleRestoreOriginal : handleAiRefine}
-              disabled={isAiWorking}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border whitespace-nowrap
-                ${isRefined 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
-                }`}
-            >
-              {isAiWorking && !isRefined ? <Wand2 size={14} className="animate-spin"/> : <Wand2 size={14} />}
-              {isRefined ? '원문 보기' : '글 다듬기 (AI)'}
-            </button>
             <button 
               onClick={handleAiAnalyze}
               disabled={isAiWorking}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
             >
-              <Activity size={14} className={isAiWorking && !isRefined ? "animate-pulse" : ""} />
+              <Activity size={14} className={isAiWorking ? "animate-pulse" : ""} />
               AI 자동 분석
             </button>
           </div>
@@ -144,19 +99,14 @@ const Workspace: React.FC<WorkspaceProps> = ({
             <span className="text-xs font-medium text-slate-400 flex items-center gap-1 bg-slate-50 px-2 py-1 rounded print-hidden">
               <Newspaper size={12} /> {article.source}
             </span>
-            {isRefined && (
-               <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full flex items-center gap-1 animate-fade-in-up">
-                 <Wand2 size={10} /> 육하원칙 분석용으로 다듬어짐
-               </span>
-            )}
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-8 leading-tight tracking-tight break-keep">
             {article.title}
           </h1>
           
           {/* Content Box */}
-          <div className={`prose prose-lg max-w-none text-slate-700 leading-9 md:leading-10 bg-slate-50 p-8 rounded-2xl border border-slate-100 print-bg-white print-border-0 print-p-0 print-text-black shadow-inner transition-all duration-500 ${isRefined ? 'ring-2 ring-emerald-100 bg-emerald-50/30' : ''}`}>
-            {displayContent.split('\n').filter(p => p.trim() !== '').map((paragraph, idx) => (
+          <div className="prose prose-lg max-w-none text-slate-700 leading-9 md:leading-10 bg-slate-50 p-8 rounded-2xl border border-slate-100 print-bg-white print-border-0 print-p-0 print-text-black shadow-inner transition-all duration-500">
+            {article.content.split('\n').filter(p => p.trim() !== '').map((paragraph, idx) => (
               <p key={idx} className="mb-6 last:mb-0 text-justify break-keep whitespace-pre-line">
                 {paragraph}
               </p>
