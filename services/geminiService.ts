@@ -1,18 +1,34 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { W1HAnswers, Article, Difficulty, AnalysisResult } from "../types";
+import { Article, Difficulty, AnalysisResult } from "../types";
 
 // Lazy Initialization of Gemini Client
 let ai: GoogleGenAI | null = null;
 
 const getAiClient = () => {
   if (!ai) {
-    // API_KEY가 없는 경우에 대한 안전장치 추가 가능
-    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("API Key is missing. Please check your environment variables.");
+    }
+    ai = new GoogleGenAI({ apiKey });
   }
   return ai;
 };
 
 const modelName = 'gemini-2.5-flash';
+
+// Helper to handle markdown code blocks in JSON response
+const parseResponse = (text: string) => {
+  try {
+    // Remove markdown code blocks if present
+    const cleanText = text.replace(/```json\n?|\n?```/g, '').trim();
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error("JSON Parse Error:", error);
+    console.error("Raw Text:", text);
+    throw new Error("Failed to parse AI response");
+  }
+};
 
 export const analyzeArticleWithAI = async (articleText: string): Promise<AnalysisResult> => {
   try {
@@ -70,7 +86,7 @@ export const analyzeArticleWithAI = async (articleText: string): Promise<Analysi
     });
 
     if (response.text) {
-      return JSON.parse(response.text) as AnalysisResult;
+      return parseResponse(response.text) as AnalysisResult;
     }
     throw new Error("No response text from AI");
   } catch (error) {
@@ -80,24 +96,8 @@ export const analyzeArticleWithAI = async (articleText: string): Promise<Analysi
 };
 
 export const refineTextForW1H = async (text: string): Promise<string> => {
-  // 더 이상 UI에서 호출되지 않지만, 하위 호환성을 위해 유지하거나 다른 용도로 남겨둡니다.
-  try {
-    const client = getAiClient();
-    const response = await client.models.generateContent({
-        model: modelName,
-        contents: `
-          다음 텍스트를 읽고 학생들이 '육하원칙(5W1H)'을 스스로 찾아 빈칸을 채울 수 있도록 학습 자료용 지문으로 다듬어주세요.
-          대상 독자: 초등학교 고학년
-          형식: 줄글(이야기) 형태, 요약 금지, 설명조(~합니다).
-          원문:
-          ${text.substring(0, 4000)}
-        `,
-    });
-    return response.text || text;
-  } catch (error) {
-      console.error("Refinement failed:", error);
-      return text;
-  }
+  // 하위 호환성을 위해 유지
+  return text;
 };
 
 export const generateEducationalArticle = async (topic: string, difficulty: Difficulty = 'medium'): Promise<Article> => {
@@ -130,12 +130,7 @@ export const generateEducationalArticle = async (topic: string, difficulty: Diff
          - 카테고리: 주제에 맞는 적절한 분야 (예: 역사, 과학, 사회, 인물 등)
          - 분량: 500~800자 내외
 
-      응답은 반드시 다음 JSON 형식을 준수하세요:
-      {
-        "title": "제목",
-        "category": "카테고리",
-        "content": "본문 내용..."
-      }
+      응답은 반드시 JSON 형식을 준수하세요. Markdown 코드 블록 없이 순수 JSON만 반환하면 더 좋습니다.
     `;
 
     const response = await client.models.generateContent({
@@ -156,7 +151,7 @@ export const generateEducationalArticle = async (topic: string, difficulty: Diff
     });
 
     if (response.text) {
-      const data = JSON.parse(response.text);
+      const data = parseResponse(response.text);
       return {
         id: `gen_${Date.now()}`,
         title: data.title,
@@ -194,7 +189,7 @@ export const getRecommendedKeywords = async (): Promise<string[]> => {
     });
 
     if (response.text) {
-      const keywords = JSON.parse(response.text);
+      const keywords = parseResponse(response.text);
       if (Array.isArray(keywords)) return keywords;
     }
     return [];
