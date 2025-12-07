@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Search, Loader2, Globe, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Loader2, Globe, Sparkles, RefreshCw } from 'lucide-react';
 import { Article, SUGGESTED_KEYWORDS } from '../types';
 import ArticleCard from './ArticleCard';
+import { getRecommendedKeywords } from '../services/geminiService';
 
 interface SidebarProps {
   query: string;
@@ -24,14 +25,34 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectArticle,
   showSavedList
 }) => {
-  const [activeTab, setActiveTab] = useState<'search' | 'recommend'>('search');
+  const [keywords, setKeywords] = useState<string[]>(SUGGESTED_KEYWORDS);
+  const [isKeywordLoading, setIsKeywordLoading] = useState(false);
+
+  const refreshKeywords = async () => {
+    setIsKeywordLoading(true);
+    try {
+      const newKeywords = await getRecommendedKeywords();
+      if (newKeywords && newKeywords.length > 0) {
+        setKeywords(newKeywords);
+      }
+    } catch (error) {
+      console.error("Failed to refresh keywords", error);
+      // Fallback is already set to SUGGESTED_KEYWORDS via initial state
+    } finally {
+      setIsKeywordLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshKeywords();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch();
   };
 
-  if (showSavedList) return null; // Logic handled in parent, this is just for layout flow
+  if (showSavedList) return null;
 
   return (
     <div className="lg:w-[350px] flex flex-col gap-6 print-hidden flex-shrink-0">
@@ -59,19 +80,36 @@ const Sidebar: React.FC<SidebarProps> = ({
         </form>
 
         <div>
-          <p className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-1">
-            <Sparkles size={12} className="text-amber-400"/> 추천 키워드
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_KEYWORDS.map(keyword => (
-              <button
-                key={keyword}
-                onClick={() => onSearch(keyword)}
-                className="px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 rounded-lg text-xs font-bold transition-all shadow-sm"
-              >
-                #{keyword}
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <Sparkles size={12} className="text-amber-400"/> AI 추천 키워드
+            </p>
+            <button 
+              onClick={refreshKeywords} 
+              disabled={isKeywordLoading}
+              className="text-slate-400 hover:text-indigo-600 transition-colors p-1 rounded-full hover:bg-indigo-50"
+              title="새로운 키워드 추천받기"
+            >
+              <RefreshCw size={12} className={isKeywordLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2 min-h-[70px]">
+            {isKeywordLoading && keywords.length === 0 ? (
+               <div className="w-full flex justify-center py-2">
+                 <Loader2 size={20} className="animate-spin text-slate-300"/>
+               </div>
+            ) : (
+              keywords.map((keyword, index) => (
+                <button
+                  key={`${keyword}-${index}`}
+                  onClick={() => onSearch(keyword)}
+                  className="px-3 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 rounded-lg text-xs font-bold transition-all shadow-sm animate-fade-in"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  #{keyword}
+                </button>
+              ))
+            )}
           </div>
         </div>
       </div>
